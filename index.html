@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<!-- Autoria: jorge.felix - jorge.felix@byseven.com.br -->
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scoreboard semanal do NOC</title>
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
+<style>
+/* ===== Tema BySeven (escuro, padrão) ===== */
+:root{
+  color-scheme:dark;
+  --bg:#0b0e13;
+  --card:rgba(20,26,34,.86);
+  --ink:#e9eef3;
+  --mute:#8e9cab;
+  --line:#29343f;
+  --head:#1a232e;
+  --accent:#ff4d4d;
+  --accent-2:#ff7a59;
+  --accent-ink:#ffffff;
+  --glow:rgba(255,77,77,.28);
+  --wall:1;
+}
+/* ===== Tema Voke (claro) — cores estimadas a partir da amostra ===== */
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f2a9f3;
+  --card:rgba(251,243,251,.86);
+  --ink:#1f3a63;
+  --mute:#3a5275;
+  --line:#c98fcb;
+  --head:#f7d3f8;
+  --accent:#2d4a7c;
+  --accent-2:#3d64a3;
+  --accent-ink:#ffffff;
+  --glow:rgba(45,74,124,.14);
+  --wall:.08;
+}
+*,*:before,*:after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0;min-height:100vh;color:var(--ink);background:var(--bg);
+  font:15px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
+  transition:background-color .4s ease,color .4s ease;
+}
+/* Wallpaper transparente (mantido nos dois temas) */
+body::before{
+  content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:url("assets/background/background_by7.png") center center/100% auto no-repeat;
+  opacity:var(--wall);transition:opacity .4s ease;
+}
+/* Brilhos de fundo */
+body::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(900px 480px at 0% -10%,var(--glow),transparent 60%),
+    radial-gradient(800px 480px at 100% 0%,var(--glow),transparent 60%);
+}
+.app-tabs{
+  display:flex;align-items:center;gap:4px;min-height:42px;width:100%;
+  padding:4px max(16px,calc((100vw - 1100px)/2 + 16px));
+  border-bottom:1px solid var(--line);background:var(--card);
+}
+.app-tabs button{
+  padding:5px 12px;border:1px solid transparent;border-radius:6px 6px 0 0;
+  color:var(--mute);font-size:13px;
+}
+.app-tabs button[aria-selected="true"]{
+  color:var(--ink);border-color:var(--line);border-bottom-color:var(--bg);
+  background:var(--bg);font-weight:600;margin-bottom:-5px;
+}
+.app-view[hidden]{display:none}
+#it-assistente{display:block;width:100%;height:calc(100vh - 42px);min-height:620px;border:0;background:var(--bg)}
+/* Tema Voke: sem wallpaper BySeven; marca gigante 'voke' no lugar */
+:root[data-theme="light"] body::before{display:none}
+/* Marca gigante de fundo (somente tema Voke, sutil) */
+.wordmark{display:none}
+:root[data-theme="light"] .wordmark{
+  display:block;position:fixed;left:50%;bottom:-6vw;transform:translateX(-50%);white-space:nowrap;z-index:-1;pointer-events:none;user-select:none;
+  font-family:"Outfit",system-ui,sans-serif;font-weight:800;letter-spacing:-.04em;line-height:1;
+  font-size:min(62vw,640px);color:#2d4a7c;opacity:.2;
+}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 56px}
+
+/* ===== Cabeçalho ===== */
+header.top{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand svg{width:36px;height:36px;color:var(--accent);flex:none}
+.brand small{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:600}
+h1{font-size:24px;font-weight:600;margin:0;letter-spacing:-.01em}
+.tools{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+
+/* ===== KPIs ===== */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px 14px 19px;position:relative;overflow:hidden;backdrop-filter:blur(6px)}
+.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--accent),var(--accent-2))}
+.kpi span{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.kpi strong{display:block;font-size:24px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+
+/* ===== Seções ===== */
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;backdrop-filter:blur(6px);animation:rise .5s ease both}
+section:nth-of-type(2){animation-delay:.07s}
+section:nth-of-type(3){animation-delay:.14s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+h2{font-size:16px;font-weight:600;margin:0 0 12px;display:flex;align-items:center;gap:10px}
+h2 .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;flex:none}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+td{vertical-align:middle}
+th{background:var(--head);font-weight:600;font-size:14px;white-space:nowrap}
+tbody tr{transition:background-color .2s ease}
+tbody tr:hover td{background:rgba(127,127,127,.07)}
+td.auto{font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ===== Campos ===== */
+input,textarea{width:100%;font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;padding:6px 8px;transition:border-color .2s,box-shadow .2s}
+input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+textarea{resize:vertical;min-height:50px}
+.two{display:flex;gap:8px}.two>div{flex:1;min-width:0}
+.two label{display:flex;align-items:flex-start;min-height:36px;line-height:1.25}
+label{font-size:12px;color:var(--mute);display:block;margin-bottom:3px}
+.mute{color:var(--mute);font-size:13px}
+.date{min-width:190px}
+.date label{font-size:13px}
+
+/* ===== Botões ===== */
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);padding:8px 14px;transition:transform .15s ease,background-color .2s ease,box-shadow .2s ease}
+button:hover{background:rgba(127,127,127,.1);transform:translateY(-1px)}
+button.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:var(--accent-ink);border-color:transparent;font-weight:500;box-shadow:0 6px 18px var(--glow)}
+button.primary:hover{background:linear-gradient(90deg,var(--accent),var(--accent-2));box-shadow:0 8px 22px var(--glow)}
+button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+
+/* ===== Tabela final (sempre em folha clara para copiar) ===== */
+.sheet{background:#fff;padding:10px;border-radius:8px}
+#final th,#final td{color:#000;background:#fff;border-color:#999}
+#final th{background:#eee}
+#final{min-width:720px}
+#msg{font-size:13px}
+</style>
+</head>
+<body>
+<div class="wordmark" aria-hidden="true">voke</div>
+<nav class="app-tabs" role="tablist" aria-label="Aplicativos">
+  <button id="tab-scoreboard" type="button" role="tab" aria-selected="true" aria-controls="view-scoreboard">Scoreboard</button>
+  <button id="tab-assistente" type="button" role="tab" aria-selected="false" aria-controls="view-assistente">IT Assistente</button>
+</nav>
+<div class="app-view" id="view-scoreboard" role="tabpanel" aria-labelledby="tab-scoreboard">
+<main>
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 11.2 22 3 16.6 21 11.6 14.4z" fill="currentColor"/><path d="M11.6 14.4 22 3 11.6 14.4z" fill="#000" opacity=".25"/></svg>
+      <div>
+        <small id="marca">BySeven · NOC</small>
+        <h1>Scoreboard semanal do NOC</h1>
+      </div>
+    </div>
+    <div class="tools">
+      <div class="date"><label for="semana">Semana (início)</label><input type="date" id="semana"></div>
+      <button id="tema" type="button" aria-label="Alternar tema">Usar tema Voke</button>
+    </div>
+  </header>
+
+  <div class="kpis" aria-live="polite">
+    <div class="kpi"><span>SLA geral</span><strong id="k_sla">—</strong></div>
+    <div class="kpi"><span>Salas de crise</span><strong id="k_crises">0</strong></div>
+    <div class="kpi"><span>Horas em crise</span><strong id="k_horas">00:00:00</strong></div>
+  </div>
+
+  <section>
+    <h2><span class="n">1</span>Preencha os resultados</h2>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Indicador</th><th style="width:300px">Resultado</th><th>Descrição / Fonte</th><th style="width:230px">Observações</th></tr></thead>
+      <tbody>
+        <tr><td>1. SLA Semanal</td><td><div class="two"><div><label for="sla_geral">Geral (%)</label><input type="number" step="0.01" id="sla_geral"></div><div><label for="sla_exc">Exceto monit. (%)</label><input type="number" step="0.01" id="sla_exc"></div></div></td><td>SLA dos chamados BySeven</td><td><textarea id="obs1" aria-label="Observações SLA"></textarea></td></tr>
+        <tr><td>3. ITs Criadas</td><td><input type="number" min="0" id="its" aria-label="ITs criadas"></td><td>Novas ITs ou alterações</td><td><textarea id="obs3" aria-label="Observações ITs"></textarea></td></tr>
+        <tr><td>4. Acordo Operacional</td><td><input type="number" min="0" id="acordo" aria-label="Acordo operacional"></td><td>Atualização / revisão com BySeven</td><td><textarea id="obs4" aria-label="Observações acordo"></textarea></td></tr>
+        <tr><td>5. Alertas Enviados às Áreas</td><td><input type="number" min="0" id="alertas_areas" aria-label="Alertas enviados às áreas"></td><td>Sem Chamados abertos por alarme</td><td><textarea id="obs5" aria-label="Observações alertas às áreas"></textarea></td></tr>
+        <tr><td>6. Alertas Tela Zabbix</td><td><input type="number" min="0" id="alertas_zbx" aria-label="Alertas tela Zabbix"></td><td>Quantidade de alertas na tela do zabbix</td><td><textarea id="obs6" aria-label="Observações Zabbix"></textarea></td></tr>
+        <tr><td>7. Salas de Crise</td><td class="auto" id="r7">0</td><td>Quantidade e período de atuação</td><td class="mute">Preenchido pela tabela de crises abaixo (chamados e motivo)</td></tr>
+        <tr><td>8. Horas em Crise</td><td class="auto" id="r8">00:00:00</td><td>Quantidade de horas que tivemos de crise</td><td><textarea id="obs8" aria-label="Observações horas em crise"></textarea></td></tr>
+        <tr><td>9. IDS Criada pra L10</td><td><input type="number" min="0" id="ids" aria-label="IDS criada pra L10"></td><td>Criar pelo menos 1 IDS para discussão na L10</td><td><textarea id="obs9" aria-label="Observações IDS"></textarea></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>Registre as crises (chamados e motivo)</h2>
+    <div class="scroll">
+    <table>
+      <thead><tr><th style="width:150px">Data</th><th style="width:240px">Chamados</th><th>Motivo</th><th style="width:120px">Duração (hh:mm)</th><th style="width:100px"></th></tr></thead>
+      <tbody id="lista"></tbody>
+    </table>
+    </div>
+    <div class="bar"><button class="primary" id="add" type="button">Adicionar crise</button></div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span>Tabela final</h2>
+    <div class="sheet scroll"><table id="final"></table></div>
+    <div class="bar">
+      <button class="primary" id="copiar" type="button">Copiar tabela</button>
+      <button id="nova" class="ghost-danger" type="button">Iniciar nova semana</button>
+      <span class="mute" id="msg" role="status"></span>
+    </div>
+    <p class="mute">A tabela copiada cola no mesmo formato nas Anotações ou no e-mail.</p>
+  </section>
+</main>
+</div>
+<div class="app-view" id="view-assistente" role="tabpanel" aria-labelledby="tab-assistente" hidden>
+  <iframe id="it-assistente" src="tabs/it-assistente/index.html" title="IT Assistente - criação e conferência de documentos" loading="lazy"></iframe>
+</div>
+
+<script>
+(function(){
+  var KEY="scoreboard-noc-v4";      /* mantida para preservar os dados já salvos */
+  var TEMA_KEY="scoreboard-noc-tema";
+  var campos=["semana","sla_geral","sla_exc","its","acordo","alertas_areas","alertas_zbx","ids","obs1","obs3","obs4","obs5","obs6","obs8","obs9"];
+  var estado={campos:{},crises:[]};
+
+  function $(id){
+    return document.getElementById(id);
+  }
+
+  /* Tema e navegação entre aplicações. */
+  function aplicarTema(t){
+    var claro=t==="light";
+    document.documentElement.setAttribute("data-theme",claro?"light":"dark");
+    $("marca").textContent=claro?"Voke · NOC":"BySeven · NOC";
+    $("tema").textContent=claro?"Usar tema BySeven":"Usar tema Voke";
+    try{
+      localStorage.setItem(TEMA_KEY,claro?"light":"dark");
+    }catch(e){}
+    sincronizarTemaAssistente();
+  }
+
+  function sincronizarTemaAssistente(){
+    var frame=$("it-assistente");
+    if(frame&&frame.contentWindow){
+      frame.contentWindow.postMessage({
+        type:"voke-theme",
+        theme:document.documentElement.getAttribute("data-theme")==="light"?"light":"dark"
+      },"*");
+    }
+  }
+
+  function selecionarAba(id){
+    var assistente=id==="assistente";
+    $("tab-scoreboard").setAttribute("aria-selected",assistente?"false":"true");
+    $("tab-assistente").setAttribute("aria-selected",assistente?"true":"false");
+    $("view-scoreboard").hidden=assistente;
+    $("view-assistente").hidden=!assistente;
+    if(assistente)sincronizarTemaAssistente();
+  }
+
+  /* Leitura e gravação do estado no navegador. */
+  function carregar(){
+    try{
+      var s=localStorage.getItem(KEY);
+      if(s){
+        var o=JSON.parse(s);
+        if(o&&Array.isArray(o.crises)){
+          estado={campos:o.campos||{},crises:o.crises};
+        }
+      }
+    }catch(e){}
+  }
+
+  function salvar(){
+    try{
+      localStorage.setItem(KEY,JSON.stringify(estado));
+    }catch(e){}
+  }
+
+  /* Conversões e valores derivados do formulário. */
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+
+  function seg(v){
+    v=String(v||"").trim().replace(",",".");
+    if(!v)return 0;
+    if(v.indexOf(":")>-1){
+      var p=v.split(":").map(function(x){return parseInt(x,10)||0;});
+      return p[0]*3600+(p[1]||0)*60+(p[2]||0);
+    }
+    var n=parseFloat(v);
+    return isNaN(n)?0:Math.round(n*3600);
+  }
+
+  function hms(s){
+    function z(n){
+      return (n<10?"0":"")+n;
+    }
+    return z(Math.floor(s/3600))+":"+z(Math.floor(s%3600/60))+":"+z(s%60);
+  }
+
+  function total(){
+    var s=0;
+    estado.crises.forEach(function(c){
+      s+=seg(c.duracao);
+    });
+    return s;
+  }
+
+  function dt(d){
+    return d?d.split("-").reverse().join("/"):"";
+  }
+
+  function v(k){
+    var x=estado.campos[k];
+    return x===undefined||x===null||x===""?"":String(x);
+  }
+
+  function resultadoSLA(){
+    var g=v("sla_geral"),e=v("sla_exc");
+    if(!g&&!e)return "";
+    return (g?g+"% (geral)":"")+(g&&e?" / ":"")+(e?e+"% (exceto monitoramento)":"");
+  }
+
+  function obsCrises(){
+    if(!estado.crises.length)return "Chamados:";
+    return estado.crises.map(function(c,i){
+      var cab="Crise "+(i+1)+(c.data?" ("+dt(c.data)+(c.duracao?", "+esc(c.duracao)+"h":"")+")":"");
+      return "<b>"+cab+"</b> - Chamados: "+esc(c.chamados||"não informados")+". Motivo: "+esc(c.motivo||"não informado")+".";
+    }).join("<br>");
+  }
+
+  /* Atualiza a tabela final e os indicadores da página. */
+  function final(){
+    var r=function(a,b,c,d){
+      return "<tr><td>"+a+"</td><td>"+b+"</td><td>"+c+"</td><td>"+d+"</td></tr>";
+    };
+    var ob=function(k){
+      return esc(v(k)).replace(/\n/g,"<br>");
+    };
+    var h="<thead><tr><th>Indicador</th><th>Resultado</th><th>Descrição / Fonte</th><th>Observações</th></tr></thead><tbody>";
+    h+=r("1. SLA Semanal",esc(resultadoSLA()),"SLA dos chamados BySeven",ob("obs1"));
+    h+=r("3. ITs Criadas",esc(v("its")),"Novas ITs ou alterações",ob("obs3"));
+    h+=r("4. Acordo Operacional",esc(v("acordo")),"Atualização / revisão com BySeven",ob("obs4"));
+    h+=r("5. Alertas Enviados às Áreas",esc(v("alertas_areas")),"Sem Chamados abertos por alarme",ob("obs5"));
+    h+=r("6. Alertas Tela Zabbix",esc(v("alertas_zbx")),"Quantidade de alertas na tela do zabbix",ob("obs6"));
+    h+=r("7. Salas de Crise",estado.crises.length,"Quantidade e período de atuação",obsCrises());
+    h+=r("8. Horas em Crise",hms(total()),"Quantidade de horas que tivemos de crise",ob("obs8"));
+    h+=r("9. IDS Criada pra L10",esc(v("ids")),"Criar pelo menos 1 IDS para discussão na L10",ob("obs9"));
+    $("final").innerHTML=h+"</tbody>";
+
+    $("r7").textContent=estado.crises.length;
+    $("r8").textContent=hms(total());
+    $("k_crises").textContent=estado.crises.length;
+    $("k_horas").textContent=hms(total());
+    var g=v("sla_geral");
+    $("k_sla").textContent=g?g+"%":"—";
+  }
+
+  /* Renderiza a lista editável de crises. */
+  function desenhar(){
+    $("lista").innerHTML=estado.crises.length?estado.crises.map(function(c,i){
+      return '<tr data-i="'+i+'"><td><input type="date" data-f="data" value="'+esc(c.data)+'" aria-label="Data da crise '+(i+1)+'"></td>'+
+      '<td><textarea data-f="chamados" placeholder="INC0012345, INC0012350" aria-label="Chamados da crise '+(i+1)+'">'+esc(c.chamados)+'</textarea></td>'+
+      '<td><textarea data-f="motivo" placeholder="Causa da crise e ação tomada" aria-label="Motivo da crise '+(i+1)+'">'+esc(c.motivo)+'</textarea></td>'+
+      '<td><input data-f="duracao" value="'+esc(c.duracao)+'" placeholder="01:30" aria-label="Duração da crise '+(i+1)+'"></td>'+
+      '<td><button type="button" data-del="'+i+'" aria-label="Remover crise '+(i+1)+'">Remover</button></td></tr>';
+    }).join(""):'<tr><td colspan="5" class="mute">Nenhuma crise registrada nesta semana.</td></tr>';
+    final();
+  }
+
+  /* Registra os eventos e inicia a interface. */
+  function init(){
+    carregar();
+    aplicarTema(localStorage.getItem(TEMA_KEY)==="light"?"light":"dark");
+    $("tab-scoreboard").addEventListener("click",function(){selecionarAba("scoreboard");});
+    $("tab-assistente").addEventListener("click",function(){selecionarAba("assistente");});
+    $("it-assistente").addEventListener("load",sincronizarTemaAssistente);
+    $("tema").onclick=function(){
+      aplicarTema(document.documentElement.getAttribute("data-theme")==="light"?"dark":"light");
+    };
+
+    campos.forEach(function(k){
+      var el=$(k);
+      if(estado.campos[k]!==undefined)el.value=estado.campos[k];
+      el.addEventListener("input",function(){
+        estado.campos[k]=el.value;
+        salvar();
+        final();
+      });
+    });
+
+    $("add").onclick=function(){
+      estado.crises.push({data:"",chamados:"",motivo:"",duracao:""});
+      salvar();
+      desenhar();
+      var a=document.querySelectorAll('[data-f="chamados"]');
+      if(a.length)a[a.length-1].focus();
+    };
+    $("lista").addEventListener("input",function(e){
+      var f=e.target.getAttribute("data-f");
+      if(!f)return;
+      var tr=e.target.closest("tr");
+      estado.crises[parseInt(tr.getAttribute("data-i"),10)][f]=e.target.value;
+      salvar();
+      final();
+    });
+    $("lista").addEventListener("click",function(e){
+      var d=e.target.getAttribute("data-del");
+      if(d===null)return;
+      estado.crises.splice(parseInt(d,10),1);
+      salvar();
+      desenhar();
+    });
+
+    $("copiar").onclick=function(){
+      var m=$("msg"),t=$("final");
+      function sel(){
+        var r=document.createRange();
+        r.selectNode(t);
+        var s=window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+        var ok=false;
+        try{
+          ok=document.execCommand("copy");
+        }catch(e){}
+        s.removeAllRanges();
+        m.textContent=ok?"Tabela copiada":"Selecione a tabela e copie com Ctrl+C";
+      }
+      try{
+        var html="<table border='1' cellpadding='4' style='border-collapse:collapse'>"+t.innerHTML+"</table>";
+        var txt=Array.prototype.map.call(t.rows,function(r){
+          return Array.prototype.map.call(r.cells,function(c){
+            return c.innerText.replace(/\s+/g," ");
+          }).join("\t");
+        }).join("\n");
+        navigator.clipboard.write([new ClipboardItem({
+          "text/html":new Blob([html],{type:"text/html"}),
+          "text/plain":new Blob([txt],{type:"text/plain"})
+        })]).then(function(){m.textContent="Tabela copiada";},sel);
+      }catch(e){
+        sel();
+      }
+    };
+
+    $("nova").onclick=function(){
+      if(!confirm("Limpar todos os campos e crises para começar uma nova semana?"))return;
+      estado={campos:{},crises:[]};
+      salvar();
+      campos.forEach(function(k){$(k).value="";});
+      desenhar();
+    };
+
+    desenhar();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
