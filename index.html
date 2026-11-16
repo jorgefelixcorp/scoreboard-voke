@@ -104,6 +104,7 @@ h1{font-size:24px;font-weight:600;margin:0;letter-spacing:-.01em}
 section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;backdrop-filter:blur(6px);animation:rise .5s ease both}
 section:nth-of-type(2){animation-delay:.07s}
 section:nth-of-type(3){animation-delay:.14s}
+section:nth-of-type(4){animation-delay:.21s}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 h2{font-size:16px;font-weight:600;margin:0 0 12px;display:flex;align-items:center;gap:10px}
 h2 .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;flex:none}
@@ -141,7 +142,8 @@ button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
 #final th,#final td{color:#000;background:#fff;border-color:#999}
 #final th{background:#eee}
 #final{min-width:720px}
-#msg{font-size:13px}
+#msg,#msg_json{font-size:13px}
+
 </style>
 </head>
 <body>
@@ -212,6 +214,17 @@ button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
     </div>
     <p class="mute">A tabela copiada cola no mesmo formato nas Anotações ou no e-mail.</p>
   </section>
+
+  <section>
+    <h2><span class="n">4</span>Compartilhar dados (JSON)</h2>
+    <p class="mute" style="margin-top:0">Os dados ficam salvos só neste navegador. Para passar a semana para outra pessoa (ou outro computador), exporte o JSON e quem tiver acesso a este site importa o arquivo e recebe tudo preenchido.</p>
+    <div class="bar" style="margin-top:0">
+      <button class="primary" id="exp_json" type="button">Exportar JSON</button>
+      <button id="imp_json" type="button">Importar JSON</button>
+      <input type="file" id="arq_json" accept="application/json,.json" hidden>
+      <span class="mute" id="msg_json" role="status" aria-live="polite"></span>
+    </div>
+  </section>
 </main>
 </div>
 <div class="app-view" id="view-assistente" role="tabpanel" aria-labelledby="tab-assistente" hidden>
@@ -222,6 +235,8 @@ button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
 (function(){
   var KEY="scoreboard-noc-v4";      /* mantida para preservar os dados já salvos */
   var TEMA_KEY="scoreboard-noc-tema";
+  var JSON_SISTEMA="scoreboard-noc"; /* identifica os arquivos gerados por esta página */
+  var JSON_VERSAO=1;
   var campos=["semana","sla_geral","sla_exc","its","acordo","alertas_areas","alertas_zbx","ids","obs1","obs3","obs4","obs5","obs6","obs8","obs9"];
   var estado={campos:{},crises:[]};
 
@@ -374,6 +389,129 @@ button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
     final();
   }
 
+  /* ===== JSON: exportar e importar a semana completa ===== */
+  function montarJSON(){
+    return JSON.stringify({
+      sistema:JSON_SISTEMA,
+      versao:JSON_VERSAO,
+      exportado_em:new Date().toISOString(),
+      semana:v("semana"),
+      indicadores:{
+        sla_geral:v("sla_geral"),
+        sla_exceto_monitoramento:v("sla_exc"),
+        its_criadas:v("its"),
+        acordo_operacional:v("acordo"),
+        alertas_enviados_areas:v("alertas_areas"),
+        alertas_tela_zabbix:v("alertas_zbx"),
+        ids_l10:v("ids")
+      },
+      observacoes:{
+        sla:v("obs1"),
+        its:v("obs3"),
+        acordo:v("obs4"),
+        alertas_areas:v("obs5"),
+        alertas_zabbix:v("obs6"),
+        horas_crise:v("obs8"),
+        ids:v("obs9")
+      },
+      crises:estado.crises.map(function(c){
+        return {
+          data:c.data||"",
+          chamados:c.chamados||"",
+          motivo:c.motivo||"",
+          duracao:c.duracao||""
+        };
+      }),
+      /* Somente informativo: é recalculado a partir das crises ao importar. */
+      resumo:{salas_de_crise:estado.crises.length,horas_em_crise:hms(total())}
+    },null,2);
+  }
+
+  function texto(x,max){
+    if(x===undefined||x===null)return "";
+    return String(x).slice(0,max||5000);
+  }
+
+  /* Valida e converte o JSON em estado; lança Error com mensagem amigável. */
+  function lerJSON(txt){
+    var o;
+    try{
+      o=JSON.parse(txt);
+    }catch(e){
+      throw new Error("O conteúdo não é um JSON válido.");
+    }
+    if(!o||typeof o!=="object"||Array.isArray(o)){
+      throw new Error("Formato de JSON não reconhecido.");
+    }
+    if(o.sistema!==JSON_SISTEMA){
+      throw new Error("Este JSON não foi gerado pelo Scoreboard do NOC.");
+    }
+    if(typeof o.versao==="number"&&o.versao>JSON_VERSAO){
+      throw new Error("JSON de uma versão mais nova. Atualize esta página.");
+    }
+    var i=o.indicadores||{},b=o.observacoes||{};
+    var map={
+      semana:o.semana,
+      sla_geral:i.sla_geral,
+      sla_exc:i.sla_exceto_monitoramento,
+      its:i.its_criadas,
+      acordo:i.acordo_operacional,
+      alertas_areas:i.alertas_enviados_areas,
+      alertas_zbx:i.alertas_tela_zabbix,
+      ids:i.ids_l10,
+      obs1:b.sla,
+      obs3:b.its,
+      obs4:b.acordo,
+      obs5:b.alertas_areas,
+      obs6:b.alertas_zabbix,
+      obs8:b.horas_crise,
+      obs9:b.ids
+    };
+    var novo={campos:{},crises:[]};
+    campos.forEach(function(k){
+      novo.campos[k]=texto(map[k],5000);
+    });
+    var data=novo.campos.semana;
+    if(data&&!/^\d{4}-\d{2}-\d{2}$/.test(data)){
+      novo.campos.semana="";
+    }
+    (Array.isArray(o.crises)?o.crises:[]).slice(0,200).forEach(function(c){
+      c=c||{};
+      var d=texto(c.data,10);
+      novo.crises.push({
+        data:/^\d{4}-\d{2}-\d{2}$/.test(d)?d:"",
+        chamados:texto(c.chamados,2000),
+        motivo:texto(c.motivo,5000),
+        duracao:texto(c.duracao,12)
+      });
+    });
+    return novo;
+  }
+
+  function aplicarEstado(novo){
+    estado=novo;
+    campos.forEach(function(k){
+      $(k).value=estado.campos[k]||"";
+    });
+    salvar();
+    desenhar();
+  }
+
+  function importarTexto(txt,aviso){
+    var novo=lerJSON(txt);
+    if(!confirm("Importar substitui os dados atuais da tela pela semana do JSON"+(novo.campos.semana?" ("+dt(novo.campos.semana)+")":"")+". Continuar?")){
+      return false;
+    }
+    aplicarEstado(novo);
+    aviso("JSON importado: "+novo.crises.length+" crise(s) carregada(s)");
+    return true;
+  }
+
+  function nomeArquivo(){
+    var s=v("semana")||new Date().toISOString().slice(0,10);
+    return "scoreboard-noc-"+s+".json";
+  }
+
   /* Registra os eventos e inicia a interface. */
   function init(){
     carregar();
@@ -456,6 +594,51 @@ button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
       campos.forEach(function(k){$(k).value="";});
       desenhar();
     };
+
+    /* --- JSON --- */
+    var mj=$("msg_json");
+    function aviso(t){
+      mj.textContent=t;
+    }
+
+    $("exp_json").onclick=function(){
+      var a=document.createElement("a");
+      var url=URL.createObjectURL(new Blob([montarJSON()],{type:"application/json"}));
+      a.href=url;
+      a.download=nomeArquivo();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function(){URL.revokeObjectURL(url);},1000);
+      aviso("JSON exportado: "+a.download);
+    };
+
+    $("imp_json").onclick=function(){
+      $("arq_json").click();
+    };
+    $("arq_json").addEventListener("change",function(e){
+      var input=e.target,f=input.files&&input.files[0];
+      if(!f)return;
+      if(f.size>2*1024*1024){
+        aviso("Arquivo muito grande para ser um scoreboard.");
+        input.value="";
+        return;
+      }
+      var r=new FileReader();
+      r.onload=function(){
+        try{
+          if(!importarTexto(String(r.result),aviso))aviso("Importação cancelada");
+        }catch(err){
+          aviso(err.message);
+        }
+        input.value="";
+      };
+      r.onerror=function(){
+        aviso("Não foi possível ler o arquivo.");
+        input.value="";
+      };
+      r.readAsText(f);
+    });
 
     desenhar();
   }
