@@ -144,6 +144,15 @@ button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
 #final{min-width:720px}
 #msg,#msg_json{font-size:13px}
 
+
+/* ===== Janela para colar JSON ===== */
+dialog{
+  width:min(640px,calc(100vw - 32px));padding:18px;border:1px solid var(--line);border-radius:12px;
+  background:var(--bg);color:var(--ink);
+}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog h3{margin:0 0 6px;font-size:16px;font-weight:600}
+dialog textarea{min-height:240px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -221,6 +230,8 @@ button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
     <div class="bar" style="margin-top:0">
       <button class="primary" id="exp_json" type="button">Exportar JSON</button>
       <button id="imp_json" type="button">Importar JSON</button>
+      <button id="copiar_json" type="button">Copiar JSON</button>
+      <button id="colar_json" type="button">Colar JSON</button>
       <input type="file" id="arq_json" accept="application/json,.json" hidden>
       <span class="mute" id="msg_json" role="status" aria-live="polite"></span>
     </div>
@@ -230,6 +241,17 @@ button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
 <div class="app-view" id="view-assistente" role="tabpanel" aria-labelledby="tab-assistente" hidden>
   <iframe id="it-assistente" src="tabs/it-assistente/index.html" title="IT Assistente - criação e conferência de documentos" loading="lazy"></iframe>
 </div>
+
+<dialog id="dlg_json" aria-labelledby="dlg_titulo">
+  <h3 id="dlg_titulo">Colar JSON do scoreboard</h3>
+  <span class="mute">Cole o conteúdo recebido e clique em Importar. Os dados atuais da tela serão substituídos.</span>
+  <textarea id="txt_json" spellcheck="false" aria-label="JSON do scoreboard"></textarea>
+  <div class="bar">
+    <button class="primary" id="dlg_ok" type="button">Importar</button>
+    <button id="dlg_cancel" type="button">Cancelar</button>
+    <span class="mute" id="dlg_msg" role="status"></span>
+  </div>
+</dialog>
 
 <script>
 (function(){
@@ -613,6 +635,29 @@ button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
       aviso("JSON exportado: "+a.download);
     };
 
+    $("copiar_json").onclick=function(){
+      var txt=montarJSON();
+      function plano(){
+        var ta=document.createElement("textarea");
+        ta.value=txt;
+        ta.style.position="fixed";
+        ta.style.opacity="0";
+        document.body.appendChild(ta);
+        ta.select();
+        var ok=false;
+        try{
+          ok=document.execCommand("copy");
+        }catch(e){}
+        ta.remove();
+        aviso(ok?"JSON copiado":"Não foi possível copiar. Use Exportar JSON.");
+      }
+      try{
+        navigator.clipboard.writeText(txt).then(function(){aviso("JSON copiado");},plano);
+      }catch(e){
+        plano();
+      }
+    };
+
     $("imp_json").onclick=function(){
       $("arq_json").click();
     };
@@ -639,6 +684,38 @@ button.ghost-danger:hover{border-color:var(--accent);color:var(--accent)}
       };
       r.readAsText(f);
     });
+
+    var dlg=$("dlg_json");
+    $("colar_json").onclick=function(){
+      $("txt_json").value="";
+      $("dlg_msg").textContent="";
+      if(dlg.showModal){
+        dlg.showModal();
+      }else{
+        dlg.setAttribute("open","");
+      }
+      $("txt_json").focus();
+    };
+    function fechar(){
+      if(dlg.close){
+        dlg.close();
+      }else{
+        dlg.removeAttribute("open");
+      }
+    }
+    $("dlg_cancel").onclick=fechar;
+    $("dlg_ok").onclick=function(){
+      var txt=$("txt_json").value.trim();
+      if(!txt){
+        $("dlg_msg").textContent="Cole o JSON antes de importar.";
+        return;
+      }
+      try{
+        if(importarTexto(txt,aviso))fechar();
+      }catch(err){
+        $("dlg_msg").textContent=err.message;
+      }
+    };
 
     desenhar();
   }
